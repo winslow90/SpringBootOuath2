@@ -28,11 +28,14 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.security.oauth2.resource.ResourceServerProperties;
 import org.springframework.boot.autoconfigure.security.oauth2.resource.UserInfoTokenServices;
+import org.springframework.boot.context.embedded.EmbeddedServletContainerCustomizer;
+import org.springframework.boot.context.embedded.ErrorPage;
 import org.springframework.boot.context.embedded.FilterRegistrationBean;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.oauth2.client.OAuth2ClientContext;
@@ -51,6 +54,7 @@ import org.springframework.security.web.csrf.CsrfFilter;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.security.web.csrf.CsrfTokenRepository;
 import org.springframework.security.web.csrf.HttpSessionCsrfTokenRepository;
+import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.filter.CompositeFilter;
@@ -61,7 +65,7 @@ import org.springframework.web.util.WebUtils;
  * @author superman90
  */
 @SpringBootApplication
-@RestController
+@Controller
 @EnableOAuth2Client
 @EnableAuthorizationServer
 @Order(6)
@@ -96,6 +100,11 @@ public class SocialApplication extends WebSecurityConfigurerAdapter {
                         
             return result;            
 	}
+        
+        @RequestMapping("/unauthenticated")
+        public String unauthenticated() {
+          return "redirect:/?error=true";
+        }
 
 	@Override
 	protected void configure(HttpSecurity http) throws Exception {
@@ -123,6 +132,17 @@ public class SocialApplication extends WebSecurityConfigurerAdapter {
 				.antMatcher("/me")
 				.authorizeRequests().anyRequest().authenticated();
 			// @formatter:on
+		}
+	}
+        
+        @Configuration
+	protected static class ServletCustomizer {
+		@Bean
+		public EmbeddedServletContainerCustomizer customizer() {
+			return container -> {
+				container.addErrorPages(
+						new ErrorPage(HttpStatus.UNAUTHORIZED, "/unauthenticated"));
+			};
 		}
 	}
 
@@ -159,7 +179,7 @@ public class SocialApplication extends WebSecurityConfigurerAdapter {
                 List<Filter> filters = new ArrayList<>();
                 
                 filters.add(ssoFilter( facebook(),"/login/facebook"));
-                filters.add(ssoFilter( github(),"/login/facebook"));
+                filters.add(ssoFilter( github(),"/login/github"));
                 
                 filter.setFilters(filters);
 		return filter;
